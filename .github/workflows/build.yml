@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+            arch: x64
+            artifact_pattern: '**/*.zip'
+            artifact_name: 'iServ-Client-darwin-x64'
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            artifact_pattern: '**/*.deb'
+            artifact_name: 'iServ-Client-linux-x64'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build application
+        run: npm run make -- --platform=${{ matrix.platform }} --arch=${{ matrix.arch }}
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: out/make/${{ matrix.artifact_pattern }}
+          retention-days: 30
+          if-no-files-found: error
